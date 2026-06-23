@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FDE Deployment Tracker — Shane</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0E1220; --surface:#161B2C; --raised:#1E2438; --border:#2A3146;
+    --text:#E6E9F2; --muted:#8A93AB; --accent:#F0A23C; --ship:#4FD1A1;
+    --p1:#F0A23C; --p2:#6FA8FF; --p3:#C58BFF; --p0:#5B6478;
+    --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+    --display:'Space Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--ink); color:var(--text);
+    font-family:var(--display); line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:920px; margin:0 auto; padding:32px 20px 80px}
+  header h1{
+    font-size:clamp(22px,4vw,30px); font-weight:700; margin:0 0 4px;
+    letter-spacing:-0.02em;
+  }
+  header .sub{color:var(--muted); font-size:14px; margin:0 0 24px}
+  .accent{color:var(--accent)}
+
+  /* deployment rail */
+  .console{
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; padding:20px 22px; margin-bottom:28px;
+  }
+  .readout{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:14px}
+  .readout .big{font-family:var(--mono); font-size:30px; font-weight:500; color:var(--accent)}
+  .readout .lbl{font-family:var(--mono); font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.12em}
+  .rail{display:flex; gap:3px; height:14px}
+  .seg{flex:1; border-radius:3px; background:var(--raised); border:1px solid var(--border); transition:background .25s ease, transform .15s ease}
+  .seg.done{border-color:transparent}
+  .seg[data-phase="0"].done{background:var(--p0)}
+  .seg[data-phase="1"].done{background:var(--p1)}
+  .seg[data-phase="2"].done{background:var(--p2)}
+  .seg[data-phase="3"].done{background:var(--p3)}
+  .seg:hover{transform:translateY(-2px)}
+  .legend{display:flex; gap:16px; flex-wrap:wrap; margin-top:14px; font-family:var(--mono); font-size:11px; color:var(--muted)}
+  .legend span{display:inline-flex; align-items:center; gap:6px}
+  .dot{width:9px; height:9px; border-radius:2px; display:inline-block}
+
+  .toolbar{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:26px}
+  button{
+    font-family:var(--display); font-size:13px; font-weight:500;
+    background:var(--raised); color:var(--text); border:1px solid var(--border);
+    padding:9px 14px; border-radius:9px; cursor:pointer; transition:all .15s ease;
+  }
+  button:hover{border-color:var(--accent); color:var(--accent)}
+  button.primary{background:var(--accent); color:#1a1206; border-color:var(--accent)}
+  button.primary:hover{filter:brightness(1.08); color:#1a1206}
+  button:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+  .phase-head{
+    font-family:var(--mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--muted); margin:30px 0 12px; padding-bottom:8px; border-bottom:1px solid var(--border);
+  }
+  .phase-head .tag{color:var(--accent)}
+
+  .day{
+    background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--p0);
+    border-radius:12px; padding:16px 18px; margin-bottom:12px; transition:border-color .15s ease;
+  }
+  .day[data-phase="1"]{border-left-color:var(--p1)}
+  .day[data-phase="2"]{border-left-color:var(--p2)}
+  .day[data-phase="3"]{border-left-color:var(--p3)}
+  .day.done{opacity:.62}
+  .day.done .title{text-decoration:line-through; text-decoration-color:var(--muted)}
+  .day-top{display:flex; align-items:flex-start; gap:12px}
+  .chk{
+    appearance:none; min-width:22px; height:22px; margin-top:2px; border:1.5px solid var(--border);
+    border-radius:6px; background:var(--raised); cursor:pointer; position:relative; transition:all .15s ease;
+  }
+  .chk:hover{border-color:var(--ship)}
+  .chk:checked{background:var(--ship); border-color:var(--ship)}
+  .chk:checked::after{content:"✓"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#0c1a14; font-size:13px; font-weight:700}
+  .chk:focus-visible{outline:2px solid var(--ship); outline-offset:2px}
+  .meta{flex:1; min-width:0}
+  .date{font-family:var(--mono); font-size:11px; color:var(--muted); letter-spacing:.06em}
+  .title{font-weight:500; font-size:16px; margin:2px 0 6px}
+  .obj{font-size:13.5px; color:var(--text); margin:0 0 4px}
+  .ex{font-size:13px; color:var(--muted); margin:0 0 10px}
+  .feeds{display:inline-flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; align-items:center}
+  .exlink{font-family:var(--mono); font-size:11px; color:var(--accent); text-decoration:none; margin-left:auto; white-space:nowrap}
+  .exlink:hover{text-decoration:underline}
+  .feed{font-family:var(--mono); font-size:10px; padding:2px 7px; border-radius:20px; border:1px solid var(--border); color:var(--muted)}
+  .feed.BP{color:var(--p3); border-color:#3a2f52}
+  .feed.JOB{color:var(--p2); border-color:#2a3a55}
+  .feed.EXPLORE{color:var(--accent); border-color:#4a3820}
+  .fields{display:grid; gap:8px}
+  .fields input, .fields textarea{
+    width:100%; font-family:var(--mono); font-size:12.5px; background:var(--ink);
+    color:var(--text); border:1px solid var(--border); border-radius:8px; padding:8px 10px; resize:vertical;
+  }
+  .fields input::placeholder, .fields textarea::placeholder{color:#566080}
+  .fields input:focus, .fields textarea:focus{outline:none; border-color:var(--accent)}
+  .vac{background:linear-gradient(180deg,#161B2C,#13182700); border:1px dashed var(--border); text-align:center; color:var(--muted); padding:16px; border-radius:12px; margin:12px 0; font-size:13px}
+  footer{margin-top:40px; color:var(--muted); font-size:12px; font-family:var(--mono); text-align:center}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+  .day-actions{display:flex; gap:8px; margin-top:10px; flex-wrap:wrap}
+  .lnk{font-family:var(--mono); font-size:11px; background:transparent; border:1px solid var(--border); color:var(--accent); padding:5px 10px; border-radius:7px; cursor:pointer}
+  .lnk:hover{border-color:var(--accent)}
+  .panel{margin-top:10px; background:var(--ink); border:1px solid var(--border); border-radius:9px; padding:12px 14px}
+  .panel[hidden]{display:none}
+  .panel pre.md{font-family:var(--mono); font-size:12px; line-height:1.55; color:var(--text); white-space:pre-wrap; word-wrap:break-word; margin:0; max-height:340px; overflow:auto}
+  .posttext{width:100%; font-family:var(--display); font-size:13.5px; line-height:1.55; background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:10px 12px; resize:vertical}
+  .posttext:focus{outline:none; border-color:var(--accent)}
+  .panel-btns{display:flex; align-items:center; gap:10px; margin-top:8px}
+  .copybtn{font-family:var(--display); font-size:12px; background:var(--accent); color:#1a1206; border:none; padding:7px 14px; border-radius:7px; cursor:pointer}
+  .copybtn:hover{filter:brightness(1.08)}
+  .muted-note{font-family:var(--mono); font-size:10.5px; color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Forward Deployed — <span class="accent">Deployment Tracker</span></h1>
+    <p class="sub">25 working days · Jun 19 → Aug 7 · log a proof every day. Saved automatically in this browser.</p>
+  </header>
+
+  <section class="console" aria-label="progress">
+    <div class="readout">
+      <span class="big" id="dayCount">0 / 25</span>
+      <span class="lbl">days shipped</span>
+      <span class="big" id="pct" style="margin-left:auto">0%</span>
+      <span class="lbl">deployed</span>
+    </div>
+    <div class="rail" id="rail" aria-hidden="true"></div>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--p0)"></i>Setup</span>
+      <span><i class="dot" style="background:var(--p1)"></i>Phase 1 · API</span>
+      <span><i class="dot" style="background:var(--p2)"></i>Phase 2 · Integrate + MCP</span>
+      <span><i class="dot" style="background:var(--p3)"></i>Phase 3 · Portfolio</span>
+    </div>
+  </section>
+
+  <div class="toolbar">
+    <button class="primary" id="exportMd">Export Markdown log</button>
+    <button id="exportJson">Export JSON</button>
+    <button id="importJson">Import JSON</button>
+    <button id="reset">Reset</button>
+    <input type="file" id="fileInput" accept="application/json" style="display:none" />
+  </div>
+
+  <div id="list"></div>
+
+  <footer>Data lives only in this browser (localStorage). Export before switching machines.</footer>
+</div>
+
+<script>
+const STORE_KEY = "fde_tracker_v1";
+
+// phase: 0 setup, 1 api, 2 integrate+mcp, 3 portfolio. Vacation rendered as a divider.
+const DAYS = [
+  {id:1,  date:"Fri Jun 19", phase:0, title:"Setup (Juneteenth, full day)", obj:"Personal toolchain + a public repo.", ex:"Install Claude Code, n8n (npx n8n), Obsidian; get API key; create public fde-portfolio repo.", feeds:["JOB","EXPLORE"], file:"exercises/day01-juneteenth-setup.md"},
+  {id:2,  date:"Mon Jun 22", phase:1, title:"First API call", obj:"Make your first Anthropic API call from code.", ex:"Run day02-first-api-call.py, change the prompt, commit.", feeds:["JOB"], file:"exercises/day02-first-api-call.py"},
+  {id:3,  date:"Tue Jun 23", phase:1, title:"Structured output", obj:"Get reliable JSON back from the model.", ex:"Prompt for JSON only; parse it; handle a parse error.", feeds:["JOB","BP"], file:"exercises/day03-structured-output.md"},
+  {id:4,  date:"Wed Jun 24", phase:1, title:"Tool use (function calling)", obj:"Give the model a tool and run the loop.", ex:"Define get_campaign_status(); handle tool_use to tool_result.", feeds:["JOB","BP"], file:"exercises/day04-tool-use.md"},
+  {id:5,  date:"Thu Jun 25", phase:1, title:"Build a tool with Claude Code", obj:"Use Claude Code to build something useful, fast.", ex:"A CLI: marketing brief to structured project plan (JSON).", feeds:["BP","JOB","EXPLORE"], file:"exercises/day05-brief-to-plan-cli.md"},
+  {id:6,  date:"Fri Jun 26", phase:1, title:"Document Week 1 in Obsidian", obj:"Make the week legible; start your build log.", ex:"READMEs, an Obsidian Build Log note, a 60-sec demo.", feeds:["JOB"], file:"exercises/day06-document-week1.md"},
+  {id:7,  date:"Mon Jun 29", phase:2, title:"First n8n workflow", obj:"Learn nodes, connections, executions.", ex:"Manual Trigger to HTTP Request (public API) to Set to output.", feeds:["JOB","EXPLORE"], file:"exercises/n8n/day07-n8n-quickstart.md"},
+  {id:8,  date:"Tue Jun 30", phase:2, title:"n8n + Claude", obj:"Put AI inside an automation.", ex:"HTTP/AI node: text in to Claude to structured output.", feeds:["JOB","BP"], file:"exercises/n8n/day08-n8n-claude.md"},
+  {id:9,  date:"Wed Jul 1",  phase:2, title:"Flagship n8n workflow", obj:"A complete ops automation, end to end.", ex:"Intake to Claude plan to write to Sheet/Obsidian to notify.", feeds:["BP","JOB","EXPLORE"], file:"exercises/n8n/day09-n8n-ops-workflow.md"},
+  {id:10, date:"Thu Jul 2",  phase:2, title:"Meet MCP", obj:"Understand MCP by running one.", ex:"Clone an example server, connect to Claude, call a tool.", feeds:["JOB"], file:"exercises/day10-meet-mcp.md"},
+  {id:11, date:"Mon Jul 6",  phase:2, title:"Scaffold your MCP server", obj:"Stand up your own server (with Claude Code).", ex:"Use mcp-server-starter/; stub tool search_notes.", feeds:["JOB","BP"], file:"exercises/mcp-server-starter/README.md"},
+  {id:12, date:"Tue Jul 7",  phase:2, title:"Read your Obsidian vault", obj:"Return real data through MCP.", ex:"Implement search_notes to read .md files from your vault.", feeds:["BP","JOB"], file:"exercises/day12-read-vault.md"},
+  {id:13, date:"Wed Jul 8",  phase:2, title:"Write to your vault", obj:"Let the connector do work.", ex:"Add create_note / append_to_note; test via Claude.", feeds:["BP","JOB"], file:"exercises/day13-write-vault.md"},
+  {id:14, date:"Thu Jul 9",  phase:2, title:"Connect the pieces", obj:"Multi-tool, multi-step value.", ex:"Claude reads notes to n8n processes to result back in Obsidian.", feeds:["BP","JOB","EXPLORE"], file:"exercises/day14-connect-pieces.md"},
+  {id:15, date:"Fri Jul 10", phase:2, title:"Harden + README (pre-vacation)", obj:"Leave both builds clean before two weeks off.", ex:"Error handling, READMEs, tag v0.1, 90-sec demos.", feeds:["JOB","BP"], file:"exercises/day15-harden-readme.md"},
+  {id:16, date:"Mon Jul 27", phase:3, title:"Re-orient + bug bash", obj:"Confirm both builds still run.", ex:"Re-run n8n + MCP, fix edges, re-record demos.", feeds:["JOB"], file:"exercises/day16-bug-bash.md"},
+  {id:17, date:"Tue Jul 28", phase:3, title:"Write the case study", obj:"Turn the n8n flagship into a narrative.", ex:"Use case-study-template.md: problem to build to replaces to deploy.", feeds:["BP","JOB","EXPLORE"], file:"exercises/day17-case-study.md"},
+  {id:18, date:"Wed Jul 29", phase:3, title:"Quantify the impact", obj:"Put numbers on it (your signature move).", ex:"Hours saved, error reduction, at-scale; add Impact section.", feeds:["BP","JOB"], file:"exercises/day18-quantify-impact.md"},
+  {id:19, date:"Thu Jul 30", phase:3, title:"Second case study (MCP server)", obj:"Show range beyond automation.", ex:"Write up the Obsidian MCP server as an AI second brain.", feeds:["JOB","BP","EXPLORE"], file:"exercises/day19-mcp-case-study.md"},
+  {id:20, date:"Fri Jul 31", phase:3, title:"Package reusable templates", obj:"Turn the work into IP you own.", ex:"Export n8n workflow JSON; document LinkedIn + AJO Skills.", feeds:["JOB","BP","EXPLORE"], file:"exercises/day20-package-templates.md"},
+  {id:21, date:"Mon Aug 3",  phase:3, title:"Portfolio page (Claude Design)", obj:"One polished place to point people.", ex:"Design + build a portfolio linking your builds; publish it.", feeds:["JOB","EXPLORE"], file:"exercises/day21-portfolio-page.md"},
+  {id:22, date:"Tue Aug 4",  phase:3, title:"Build-log post #1", obj:"Public proof under your AI pillar.", ex:"Use build-log-post-template.md; flagship n8n story.", feeds:["JOB","EXPLORE"], file:"exercises/day22-build-log-post.md"},
+  {id:23, date:"Wed Aug 5",  phase:3, title:"Post #2 + talking points", obj:"Second post + reusable talking points.", ex:"Lesson-learned post; 5 build to outcome talking points.", feeds:["JOB","BP"], file:"exercises/day23-post2-talking-points.md"},
+  {id:24, date:"Thu Aug 6",  phase:3, title:"Outreach", obj:"Start the conversations.", ex:"3-5 stealth/exploration chats with applied-AI leaders.", feeds:["JOB","EXPLORE"], file:"exercises/day24-outreach.md"},
+  {id:25, date:"Fri Aug 7",  phase:3, title:"Review + next 30 days", obj:"Consolidate; pick your next build.", ex:"Export tracker, retro, choose next: deeper n8n / Obsidian plugin / template.", feeds:["BP","JOB","EXPLORE"], file:"exercises/day25-review-next30.md"},
+];
+
+const EXSRC = {};
+const POSTS = {"1": "Day 1 of teaching myself to build AI systems end-to-end — not just advise on them.\n\nSpent today standing up the workbench: Claude Code, a local n8n instance, an Obsidian vault, a live API key, and a public repo.\n\n15 years in marketing ops taught me to scope and buy these systems. The next chapter is building them myself.\n\n25 working days. One shipped proof a day. All public.", "2": "First line of code I've written that talks to an LLM. ✅\n\nPython → prompt → response → committed.\n\nSmall, but it's the line between 'I get how AI works' and 'I build with it.' I'm done staying on the advising side of that line.\n\nDay 2/25.", "3": "Getting an AI to *talk* is easy. Getting it to return data your systems can actually use is the real job.\n\nToday: forced clean JSON out of the model, parsed it, then broke it on purpose to see the failure mode and handle it.\n\nReliable outputs are what separate a demo from production. Day 3/25.", "4": "Today I gave a model a tool and let it decide when to use it.\n\nRequest → the model asks for data → my code answers → it finishes the job. That loop is the engine behind every AI agent and connector.\n\nLearning the mechanism, not just the buzzword. Day 4/25.", "5": "Built a real tool today: feed it a marketing brief, it returns a structured project plan — tasks, owners, durations.\n\nThe twist: I built it *with* Claude Code, directing the agent instead of hand-typing every line.\n\nThis is the workflow I think most teams are about to adopt. Day 5/25.", "6": "One week in. What I couldn't do last Monday and can now: call an LLM from code, force reliable JSON, run a tool-use loop, and ship a small CLI built with an AI agent.\n\nWrote it all up and recorded a 60-second demo. If it isn't documented, it didn't happen. Day 6/25.", "7": "Started on automation this week. Built my first n8n workflow: trigger → pull live data from an API → reshape it → out.\n\nNo code, all nodes — but now I can see exactly how data moves through an automation. That visibility is the whole point. Day 7/25.", "8": "Put an AI step *inside* an automation today: text goes in, Claude returns structured output, the workflow keeps moving.\n\nThis is the pattern I keep seeing teams want — AI as one reliable node in a larger process, not a chatbot off to the side. Day 8/25.", "9": "Shipped my first end-to-end ops automation today:\n\nintake form → Claude drafts a project plan → logged automatically → team gets notified.\n\nThe kind of workflow that quietly removes hours of manual coordination every week. Built entirely on tools I control. Day 9/25.", "10": "Spent today getting hands-on with MCP — the protocol that lets AI safely plug into real systems.\n\nRan an example server, connected it to Claude, called a live tool. Most people are still reading about this; building one is next.\n\nDay 10/25.", "11": "Started building my own MCP server today — a connector that lets Claude work directly with my knowledge base.\n\nSkeleton's up, first tool registered and showing in Claude. This is the centerpiece of the build. Day 11/25.", "12": "My connector returned real data for the first time today — Claude searching and pulling notes straight from my own knowledge base over MCP.\n\nThe moment it stopped being a demo and started being a tool. Day 12/25.", "13": "Today my AI connector started doing work, not just reading it — creating and updating notes in my knowledge base on command.\n\nRead + write is the line where a connector becomes genuinely useful. Also added guardrails so it can't write where it shouldn't. Day 13/25.", "14": "Connected all three builds today: Claude reads my notes through my MCP server → an n8n workflow processes them → the result lands back as a new note.\n\nOne flow, three tools I built, orchestrated end-to-end. The demo I'm most proud of so far. Day 14/25.", "15": "Last build day before two weeks off. Spent it making both flagship builds bulletproof: error handling, real READMEs, tagged release, fresh demos.\n\nLeaving it clean so it still tells its own story when I'm back. Good engineering is mostly the unglamorous part. Day 15/25.", "16": "Back from a break. First job: confirm everything I built still runs.\n\nRe-ran both flagships, fixed the rough edges, re-recorded the demos. Re-entry day. Day 16/25.", "17": "The build is only half the work — the other half is making it legible to someone who wasn't there.\n\nWrote up my flagship automation as a one-page case study: the problem, what I built, what it replaces, how it'd deploy on a real team. Day 17/25.", "18": "Put numbers on the build today. Hours saved per run, error reduction, what it looks like at 1,000+ requests.\n\nEvery figure tied to a stated assumption — defensible beats impressive. Quantifying impact has been my move for 15 years; same rigor, new kind of work. Day 18/25.", "19": "Wrote up my second build today — the MCP server — as an AI-accessible 'second brain.'\n\nAutomation and connectors are two different muscles, and I wanted to show both. Day 19/25.", "20": "Turned the work into assets I own today: exported my automation as a reusable template and documented the Skills I've built.\n\nBuild once, reuse across contexts. That's how a practice compounds. Day 20/25.", "21": "Put everything in one place today — a portfolio page linking my automation, my MCP connector, the case studies, and the numbers.\n\nOne link to point anyone to. Built and shipped it with Claude Design. Day 21/25.", "22": "Sharing the flagship: an ops automation that turns an intake form into a drafted, logged, and routed project plan — no manual coordination.\n\nHere's the problem it solves and how it'd drop into a real team. [link]\n\nDay 22/25.", "23": "A lesson from building an AI connector from scratch: the hard part isn't the model, it's the plumbing — safe reads, safe writes, clear boundaries.\n\nWrote up what I learned, and boiled the whole sprint into five build → business-outcome talking points. Day 23/25.", "24": "Twenty-four days of building in public, and the conversations are starting.\n\nIf you're working on applied AI, automation, or connecting these systems to how teams actually work — I'd genuinely like to compare notes. Reaching out to a few of you this week. Day 24/25.", "25": "25 days ago I could spec AI solutions. Today I can build them — automations, an MCP connector, case studies with real numbers, all shipped and public.\n\nWrote the retro and picked the next build. The gap between advising and building is closeable. Here's the proof. ▶️"};
+
+let state = load();
+
+function load(){
+  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; }
+  catch(e){ return {}; }
+}
+function save(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e){} }
+function st(id){ return state[id] || (state[id] = {done:false, proof:"", notes:""}); }
+
+function render(){
+  const list = document.getElementById("list");
+  list.innerHTML = "";
+  let lastPhase = null;
+  const phaseNames = {0:"Setup", 1:"Phase 1 · API fluency", 2:"Phase 2 · Integrate + MCP", 3:"Phase 3 · Portfolio & positioning"};
+
+  DAYS.forEach((d, i) => {
+    if (d.phase !== lastPhase){
+      const h = document.createElement("div");
+      h.className = "phase-head";
+      h.innerHTML = `<span class="tag">›</span> ${phaseNames[d.phase]}`;
+      list.appendChild(h);
+      lastPhase = d.phase;
+    }
+    // insert vacation divider before day 16
+    if (d.id === 16){
+      const v = document.createElement("div");
+      v.className = "vac";
+      v.textContent = "🌴  Vacation — Jul 13–24 · fully off. The hard build is done.";
+      list.appendChild(v);
+    }
+    const s = st(d.id);
+    const card = document.createElement("div");
+    card.className = "day" + (s.done ? " done":"");
+    card.dataset.phase = d.phase;
+    const postDraft = (s.post!=null && s.post!=="") ? s.post : (POSTS[d.id]||"");
+    card.innerHTML = `
+      <div class="day-top">
+        <input class="chk" type="checkbox" ${s.done?"checked":""} aria-label="Mark day ${d.id} done" data-id="${d.id}" data-act="done">
+        <div class="meta">
+          <div class="date">DAY ${d.id} · ${d.date}</div>
+          <div class="title">${d.title}</div>
+          <p class="obj">${d.obj}</p>
+          <p class="ex">${d.ex}</p>
+          <div class="feeds">${d.feeds.map(f=>`<span class="feed ${f}">${f}</span>`).join("")}</div>
+          <div class="fields">
+            <input type="text" placeholder="Proof — paste a commit / repo / video link" value="${esc(s.proof)}" data-id="${d.id}" data-act="proof">
+            <textarea rows="1" placeholder="Notes / what to recycle into the plan…" data-id="${d.id}" data-act="notes">${esc(s.notes)}</textarea>
+          </div>
+          <div class="day-actions">
+            ${d.file?`<button class="lnk" data-id="${d.id}" data-act="toggle-ex">▸ Steps</button>`:""}
+            <button class="lnk" data-id="${d.id}" data-act="toggle-post">▸ LinkedIn draft</button>
+            <button class="lnk ship-btn" data-id="${d.id}" data-act="done-btn" style="margin-left:auto;background:${s.done?'var(--ship)':'transparent'};color:${s.done?'#0c1a14':'var(--ship)'};border-color:var(--ship)">${s.done ? '✓ Shipped' : '▸ Mark complete'}</button>
+          </div>
+          ${d.file?`<div class="panel" id="ex-${d.id}" hidden><pre class="md">${esc(EXSRC[d.id]||"Exercise content not loaded.")}</pre></div>`:""}
+          <div class="panel" id="post-${d.id}" hidden>
+            <textarea class="posttext" rows="9" data-id="${d.id}" data-act="post" placeholder="Draft a LinkedIn post…">${esc(postDraft)}</textarea>
+            <div class="panel-btns"><button class="copybtn" data-id="${d.id}" data-act="copy-post">Copy</button><span class="muted-note">Draft for consideration — edit before posting.</span></div>
+          </div>
+        </div>
+      </div>`;
+    list.appendChild(card);
+  });
+  updateProgress();
+}
+
+function esc(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+function updateProgress(){
+  const done = DAYS.filter(d => st(d.id).done).length;
+  document.getElementById("dayCount").textContent = `${done} / 25`;
+  document.getElementById("pct").textContent = Math.round(done/25*100) + "%";
+  const rail = document.getElementById("rail");
+  rail.innerHTML = DAYS.map(d => `<div class="seg ${st(d.id).done?'done':''}" data-phase="${d.phase}" title="Day ${d.id}"></div>`).join("");
+}
+
+document.getElementById("list").addEventListener("input", e => {
+  const id = e.target.dataset.id, act = e.target.dataset.act;
+  if (!id) return;
+  const s = st(id);
+  if (act === "done"){ s.done = e.target.checked; render(); }
+  else if (act === "proof"){ s.proof = e.target.value; updateProgress(); }
+  else if (act === "notes"){ s.notes = e.target.value; }
+  else if (act === "post"){ s.post = e.target.value; }
+  save();
+});
+
+document.getElementById("list").addEventListener("click", e => {
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  const id = b.dataset.id, act = b.dataset.act;
+  if (act === "done-btn"){ const s = st(id); s.done = !s.done; save(); render(); }
+  else if (act === "toggle-ex"){ const p = document.getElementById("ex-"+id); if(p){ p.hidden = !p.hidden; b.textContent = (p.hidden?"\u25b8":"\u25be")+" Steps"; } }
+  else if (act === "toggle-post"){ const p = document.getElementById("post-"+id); if(p){ p.hidden = !p.hidden; b.textContent = (p.hidden?"\u25b8":"\u25be")+" LinkedIn draft"; } }
+  else if (act === "copy-post"){
+    const ta = document.querySelector('.posttext[data-id="'+id+'"]'); if(!ta) return;
+    const done = ()=>{ b.textContent="Copied \u2713"; setTimeout(()=>b.textContent="Copy",1500); };
+    if (navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(ta.value).then(done).catch(()=>{ ta.select(); document.execCommand("copy"); done(); }); }
+    else { ta.select(); document.execCommand("copy"); done(); }
+  }
+});
+
+document.getElementById("exportMd").addEventListener("click", () => {
+  let md = `# FDE Proof Log — exported ${new Date().toLocaleDateString()}\n\n`;
+  md += `Progress: ${DAYS.filter(d=>st(d.id).done).length}/25 days.\n\n`;
+  md += `| Day | Date | Skill | Done | Proof | Feeds | Notes |\n|---|---|---|---|---|---|---|\n`;
+  DAYS.forEach(d => { const s = st(d.id);
+    md += `| ${d.id} | ${d.date} | ${d.title} | ${s.done?"✅":"☐"} | ${s.proof||""} | ${d.feeds.join(", ")} | ${(s.notes||"").replace(/\n/g," ")} |\n`;
+  });
+  md += `\n## Completed proofs (harvest for business plan + talking points)\n`;
+  DAYS.filter(d=>st(d.id).done && st(d.id).proof).forEach(d=>{ md += `- **${d.title}** → ${st(d.id).proof}\n`; });
+  download("fde-proof-log.md", md);
+});
+
+document.getElementById("exportJson").addEventListener("click", () => {
+  download("fde-tracker.json", JSON.stringify(state, null, 2));
+});
+
+document.getElementById("importJson").addEventListener("click", () => document.getElementById("fileInput").click());
+document.getElementById("fileInput").addEventListener("change", e => {
+  const file = e.target.files[0]; if(!file) return;
+  const r = new FileReader();
+  r.onload = () => { try { state = JSON.parse(r.result); save(); render(); } catch(err){ alert("Could not read that file."); } };
+  r.readAsText(file);
+});
+
+document.getElementById("reset").addEventListener("click", () => {
+  if (confirm("Clear all progress in this browser? Export first if you want a backup.")){
+    state = {}; save(); render();
+  }
+});
+
+function download(name, text){
+  const blob = new Blob([text], {type:"text/plain"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function buildExsrc(){ document.querySelectorAll('script.exsrc').forEach(s => { EXSRC[s.dataset.id] = s.textContent.split('<\\/script>').join('<\/script>').replace(/^\n/,'').replace(/\n$/,''); }); }
+if (document.readyState === "loading"){ document.addEventListener("DOMContentLoaded", () => { buildExsrc(); render(); }); }
+else { buildExsrc(); render(); }
+</script>
+<!--EXERCISE-EMBEDS-->
+<script type="text/plain" class="exsrc" data-id="1">
+# Day 1 — Juneteenth Setup Checklist
+
+A full day is plenty. Goal: by tonight you have your personal toolchain running and a public repo, so Monday you build instead of install. None of this needs an employer login.
+
+## 1. Core dev tools
+- [ ] **VS Code** — https://code.visualstudio.com
+- [ ] **Python 3.11+** — https://python.org (verify: `python3 --version`)
+- [ ] **Node.js LTS** — https://nodejs.org (verify: `node --version`)
+- [ ] **Git** — usually preinstalled on macOS (verify: `git --version`)
+- [ ] **Claude Code** — install per https://docs.claude.com ; run `claude` once to confirm it launches
+
+## 2. Accounts & keys
+- [x] **GitHub account** — https://github.com (done — username `shanelabountyai`)
+- [ ] **Anthropic API key** — https://console.anthropic.com → API keys → create. Save it safely.
+
+## 3. n8n (your automation flagship engine)
+The fastest way to run it locally:
+```bash
+npx n8n
+```
+Then open the editor at **http://localhost:5678**. (Alternative: Docker — see https://docs.n8n.io.)
+- [ ] n8n editor opens in your browser
+- [ ] Take a screenshot for your Day 1 proof
+
+## 4. Obsidian (your second brain + MCP build target)
+- [ ] Install **Obsidian** — https://obsidian.md
+- [ ] Create a new vault called **FDE** in a folder you'll remember (you'll point the MCP server at this path in Week 3)
+- [ ] Make one note: `Build Log.md`
+
+## 5. Create your portfolio repo
+```bash
+mkdir fde-portfolio && cd fde-portfolio
+git init
+printf "# Forward Deployed Portfolio — Shane LaBounty\nBuilds, automations, and connectors from my forward-deployed sprint.\n" > README.md
+git add README.md && git commit -m "Day 1: kickoff"
+```
+Create an empty **public** repo `fde-portfolio` on GitHub, then:
+```bash
+git remote add origin https://github.com/shanelabountyai/fde-portfolio.git
+git branch -M main && git push -u origin main
+```
+
+## 6. Set your API key (persists across sessions)
+```bash
+echo 'export ANTHROPIC_API_KEY="sk-ant-..."' >> ~/.zshrc
+source ~/.zshrc
+```
+
+## 7. Smoke test
+```bash
+pip install anthropic --break-system-packages
+python3 day02-first-api-call.py   # copy this file in from /exercises
+```
+A printed response = you're done.
+
+## ✅ Proof of skill
+Public `fde-portfolio` repo + screenshots of the **n8n editor** and your **Obsidian vault**. Paste the repo URL into the tracker (Day 1 proof field).
+
+> Working > perfect. Tomorrow you write real code.
+
+</script>
+<script type="text/plain" class="exsrc" data-id="2">
+"""
+Day 2 — Your first Anthropic API call.
+
+Run it:
+    pip install anthropic --break-system-packages
+    export ANTHROPIC_API_KEY="sk-ant-..."
+    python3 day02-first-api-call.py
+
+Exercises:
+  1. Run it as-is and confirm you get a response.
+  2. Change PROMPT to something about marketing ops.
+  3. Change the model or max_tokens and see what happens.
+  4. Commit it to your repo with: git add . && git commit -m "Day 2: first API call"
+
+Proof of skill: committed script + a screenshot of the printed output.
+"""
+
+import os
+from anthropic import Anthropic
+
+# The SDK automatically reads ANTHROPIC_API_KEY from your environment.
+client = Anthropic()
+
+PROMPT = "In two sentences, explain what a 'forward deployed engineer' does."
+
+def main():
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        raise SystemExit("Set ANTHROPIC_API_KEY first (see day01 checklist).")
+
+    response = client.messages.create(
+        model="claude-sonnet-4-6",   # fast + capable; fine for everything in this sprint
+        max_tokens=300,
+        messages=[{"role": "user", "content": PROMPT}],
+    )
+
+    # response.content is a list of blocks; for plain text, grab the text blocks.
+    text = "".join(block.text for block in response.content if block.type == "text")
+    print(text)
+
+if __name__ == "__main__":
+    main()
+
+</script>
+<script type="text/plain" class="exsrc" data-id="3">
+# Day 3 — Structured Output (reliable JSON)
+
+Goal: make the model return JSON you can actually parse and trust. This is the difference between a demo and something you'd put in a workflow.
+
+## Build it
+1. Copy `day02-first-api-call.py` to `day03-structured-output.py`.
+2. Rewrite the prompt to ask for **JSON only** — e.g. "Return ONLY valid JSON with keys `summary` (string), `priority` (high|med|low), `tasks` (array of strings). No prose, no markdown fences."
+3. Feed it a short marketing-ops brief as input text.
+4. Parse the response with `json.loads()` and print one field (e.g. `data["priority"]`).
+
+## Make it production-safe
+5. Wrap the parse in `try/except json.JSONDecodeError`. On failure, print the raw text so you can see what broke.
+6. **Break it on purpose once:** change the prompt to invite prose ("explain your reasoning, then give JSON"). Watch `json.loads()` fail. Then fix the prompt and confirm it parses again. You now know the failure mode.
+7. (Optional) Strip stray markdown fences before parsing: `text.strip().removeprefix("```json").removesuffix("```")`.
+
+## Commit
+```bash
+git add . && git commit -m "Day 3: structured JSON output + error handling"
+```
+
+## ✅ Proof
+A script that returns and safely parses JSON, plus your note on what caused the one failure and how you fixed it.
+
+## Why it feeds the work
+"Reliable outputs = production-readiness" — this is a BP + JOB talking point. Note it for the build log.
+
+</script>
+<script type="text/plain" class="exsrc" data-id="4">
+# Day 4 — Tool Use (function calling)
+
+Goal: give the model a tool, run the request → tool_use → tool_result loop. This is the core mechanic behind every agent and connector you'll build later.
+
+## Build it
+1. Copy your Day 3 script to `day04-tool-use.py`.
+2. Define **one tool** in the `tools=[...]` parameter — e.g. `get_campaign_status` with an input schema of `{ "name": string }`.
+3. Write a Python stub function that returns fake data: `def get_campaign_status(name): return {"name": name, "status": "live", "spend": 4200}`.
+4. Send a message that should trigger it: "What's the status of the Spring Launch campaign?"
+
+## Run the loop
+5. Inspect the response. When `response.stop_reason == "tool_use"`, find the `tool_use` block and read its `input`.
+6. Call your stub with that input.
+7. Send a **second** API call appending a `tool_result` block (matching the `tool_use_id`) with your stub's return value.
+8. Print the model's final natural-language answer.
+
+## Confirm you understand
+9. Add a second tool or change the stub data and verify the model picks the right tool and reflects the new data.
+
+## Commit
+```bash
+git add . && git commit -m "Day 4: tool use loop"
+```
+
+## ✅ Proof
+A working tool-use script where the model calls your tool and uses the result in its answer.
+
+## Why it feeds the work
+Tool use is *the* FDE skill — it's what MCP servers expose. Flag this as a JOB highlight.
+
+</script>
+<script type="text/plain" class="exsrc" data-id="5">
+# Day 5 — Build a real tool *with Claude Code*
+
+Goal: use Claude Code to build a useful CLI fast — a marketing brief → structured project plan. Today is about building *with* the agent, not hand-coding everything.
+
+## Set up
+1. `mkdir brief-to-plan && cd brief-to-plan`, then launch `claude`.
+2. Tell Claude Code the spec in plain English:
+   > "Build a Python CLI that takes a marketing brief (a text file or stdin) and uses the Anthropic API to return a structured project plan as JSON: tasks (each with owner, duration_days, dependencies), plus a one-line summary. Print it nicely. Include a README."
+
+## Iterate with the agent
+3. Let Claude Code scaffold it. Run it against a real-sounding brief.
+4. Push on it: "add `--format table` for a readable view," "handle an empty brief gracefully," "make the JSON match this schema." You're directing, it's typing.
+5. Keep a sample input file (`sample-brief.txt`) and capture the output.
+
+## Ship it
+6. Move/copy the project into your `fde-portfolio` repo.
+7. Commit:
+```bash
+git add . && git commit -m "Day 5: brief-to-plan CLI built with Claude Code"
+```
+
+## ✅ Proof
+`brief-to-plan` CLI in your repo + a sample input and its generated plan output.
+
+## Why it feeds the work
+This is a concrete, demoable asset (BP + EXPLORE) and direct evidence of "I build with Claude Code" (JOB). Save the sample I/O — you'll demo it on Day 6.
+
+</script>
+<script type="text/plain" class="exsrc" data-id="6">
+# Day 6 — Document Week 1 + start the build log
+
+Goal: make the week legible to someone else (a hiring manager, a prospect) and start the build-log habit. Documentation is a deliverable, not an afterthought.
+
+## Tidy the repo
+1. Add or improve a `README.md` for each script/folder: one line on what it does, how to run it.
+2. Make sure the top-level `fde-portfolio` README links to Day 2–5 artifacts.
+
+## Start the build log (Obsidian)
+3. In your FDE vault, open `Build Log.md`.
+4. Write **one paragraph**: "What I can now do that I couldn't Monday." Be concrete — API calls, reliable JSON, tool use, a CLI built with Claude Code.
+
+## Record a demo
+5. Screen-record a **60-second** run of `brief-to-plan`: paste a brief, show the structured plan. No narration needed if time's short.
+6. Save the clip (and drop it in the repo or link it from the README).
+
+## Commit
+```bash
+git add . && git commit -m "Day 6: Week 1 docs + build log + demo"
+```
+
+## ✅ Proof
+Documented repo + Obsidian build-log note + 60-sec demo clip. Log all three in `tracker.html`.
+
+## Why it feeds the work
+This is your portfolio backbone and raw material for `03-skills-to-narrative`. Every Friday produces a build-log entry.
+
+</script>
+<script type="text/plain" class="exsrc" data-id="7">
+# Day 7 — n8n Quickstart
+
+Goal: understand nodes, connections, and executions by building one real workflow. No code, no employer systems.
+
+## Run n8n
+```bash
+npx n8n        # editor at http://localhost:5678
+```
+
+## Build: "fetch + reshape" workflow
+1. **Manual Trigger** — add it; this is your "run" button.
+2. **HTTP Request** node → connect it to the trigger.
+   - Method: `GET`
+   - URL: `https://hacker-news.firebaseio.com/v0/topstories.json`
+     (a free public API — returns top story IDs)
+3. Run it. You'll see an array of IDs in the output.
+4. **Set** (or **Edit Fields**) node → keep just the first 5 IDs, rename to `topIds`.
+5. Run the whole workflow with the Manual Trigger.
+
+## What you just learned
+- Nodes pass JSON to each other along the connections.
+- Each node shows its input and output — that's how you debug.
+- "Executions" (left sidebar) logs every run.
+
+## ✅ Proof
+A workflow that runs end to end. Screenshot a successful execution; save/export the workflow.
+
+## Stretch
+Swap the URL for a quotes API (`https://zenquotes.io/api/random`) and reshape the response. The point is fluency with nodes, not the data.
+
+</script>
+<script type="text/plain" class="exsrc" data-id="8">
+# Day 8 — n8n + Claude
+
+Goal: put AI *inside* an automation. A workflow takes input text → Claude → structured output. This is the bridge between Day 7 (nodes) and Day 9 (the flagship).
+
+## Run n8n
+```bash
+npx n8n        # editor at http://localhost:5678
+```
+
+## Build: "text in → Claude → structured out"
+1. **Manual Trigger** (or **Set** node) to hold an input string — e.g. a short campaign brief.
+2. **HTTP Request** node calling the Anthropic API:
+   - Method: `POST`
+   - URL: `https://api.anthropic.com/v1/messages`
+   - Headers: `x-api-key: <your key>`, `anthropic-version: 2023-06-01`, `content-type: application/json`
+   - Body (JSON): model `claude-sonnet-4-6`, `max_tokens` ~500, and a `messages` array whose user content is your input text + "return JSON only with keys …".
+   - **Tip:** store the API key in n8n **Credentials** (or a header-auth credential), not hardcoded.
+   - *Alternative:* use n8n's built-in **Anthropic / AI** node if you'd rather not hand-build the request.
+3. Run it. Confirm Claude's response comes back in the node output.
+4. **Set / Edit Fields** node to pull the model's text out of the response and (optionally) parse the JSON.
+
+## Confirm you understand
+5. Change the input text and re-run — the output should track it. You've now got an AI step you can drop into any workflow.
+
+## ✅ Proof
+A workflow that returns a Claude-generated structured result. Screenshot a successful execution; export the workflow JSON.
+
+## Why it feeds the work
+This is the reusable "AI node" pattern behind the Day 9 flagship (JOB + BP).
+
+</script>
+<script type="text/plain" class="exsrc" data-id="9">
+# Day 9 — The Flagship n8n Workflow (end to end)
+
+Goal: a complete "ops" automation entirely on tools you control. This is your portfolio centerpiece for automation. Use sample marketing-ops data — no employer access needed.
+
+## The shape
+```
+[Webhook / Form intake]
+      → [Anthropic: draft a project plan from the brief]
+      → [Write result to Google Sheet OR Obsidian]
+      → [Notify: email or Discord/Slack webhook]
+```
+
+## Step by step
+1. **Webhook** node (trigger). Copy its test URL. (Later you can put an n8n **Form** in front of it.)
+   - Input shape: `{ "brief": "Launch a Q3 webinar promo across email and social" }`
+
+2. **HTTP Request** node → call the Anthropic API (most reliable, version-independent):
+   - Method: `POST`
+   - URL: `https://api.anthropic.com/v1/messages`
+   - Headers:
+     - `x-api-key`: your key (store it in n8n **Credentials**, don't hardcode)
+     - `anthropic-version`: `2023-06-01`
+     - `content-type`: `application/json`
+   - Body (JSON), using the incoming brief:
+     ```json
+     {
+       "model": "claude-sonnet-4-6",
+       "max_tokens": 1024,
+       "messages": [
+         { "role": "user", "content": "Turn this marketing brief into a JSON project plan with tasks, owners, and durations. Return JSON only. Brief: {{ $json.body.brief }}" }
+       ]
+     }
+     ```
+   *(Tip: n8n also has a native Anthropic / AI Agent node — either works. The HTTP node teaches you the real request.)*
+
+3. **Set / Code** node → parse the model's text into clean fields (the plan lives in `content[0].text`).
+
+4. **Google Sheets** node (free) → append a row with the brief + plan.
+   *Alternative:* write a note to **Obsidian** via your Day 13 MCP `create_note` tool, or via the Local REST API plugin.
+
+5. **Send Email** or **HTTP Request to a Discord/Slack incoming webhook** → notify that a plan is ready.
+
+## ✅ Proof
+A working webhook-to-notification run. Record a 60–90 second screen capture of one execution. Export the workflow JSON (Day 20) — that's reusable IP.
+
+## Why this matters
+This is the "strategy that ships" story in miniature: a request goes in, AI does the thinking, the result is logged and the team is notified — built on infrastructure you own and can hand to any client.
+
+</script>
+<script type="text/plain" class="exsrc" data-id="10">
+# Day 10 — Meet MCP
+
+Goal: understand the Model Context Protocol by *running one*. You don't need to build yet — today is literacy, so Week 3 (building your own) isn't starting cold.
+
+## Run an example server
+1. Pick an official example from Anthropic's MCP servers repo (e.g. a filesystem or "everything" demo server). Check the docs at https://modelcontextprotocol.io and the `modelcontextprotocol/servers` GitHub repo.
+2. Clone it and follow its README to run it locally (Node or Python depending on the example).
+
+## Connect it to Claude
+3. Add the server to **Claude Desktop** (or Claude Code) config so it appears as an available tool. The example's README shows the exact config block — it's a small JSON entry pointing at the server command.
+4. Restart Claude Desktop/Code so it picks up the server.
+
+## Call a tool
+5. In a Claude chat, trigger one of the server's tools (e.g. ask it to read a file the filesystem server exposes). Confirm the tool actually runs and returns real data.
+
+## Capture what you learned
+6. In your Obsidian vault, jot 3–5 bullets: what a "tool" looks like over MCP, what the config did, and how this maps to the server *you'll* build next week.
+
+## ✅ Proof
+Notes + a screenshot of a working MCP tool call.
+
+## Why it feeds the work
+MCP literacy is rare and in demand (JOB). These notes are your on-ramp to Days 11–15.
+
+</script>
+<script type="text/plain" class="exsrc" data-id="11">
+# MCP Server Starter — `obsidian-mcp`
+
+Your connector portfolio piece (Days 11–15): a Model Context Protocol server that lets Claude read and write your **Obsidian vault** — an "AI-accessible second brain." Fully personal, no employer systems.
+
+## What MCP is, in one line
+A standard way to expose **tools** to an AI client like Claude/Claude Code, so the model can work with your systems through a clean contract.
+
+## Setup
+```bash
+pip install "mcp[cli]" --break-system-packages
+export VAULT_PATH="/full/path/to/your/FDE/vault"
+python3 server.py
+```
+The starter reads `.md` files directly from the vault folder — the simplest, most reliable approach (no Obsidian plugin required). If you later want live two-way sync while Obsidian is open, the **Local REST API** community plugin is an option.
+
+## Connect it to Claude
+Add it to your Claude Desktop / Claude Code MCP config (path in the docs at https://docs.claude.com):
+```json
+{
+  "mcpServers": {
+    "obsidian": {
+      "command": "python3",
+      "args": ["/full/path/to/server.py"],
+      "env": { "VAULT_PATH": "/full/path/to/your/FDE/vault" }
+    }
+  }
+}
+```
+Restart the client; the `search_notes` tool should appear.
+
+## Build order (matches the daily plan)
+- **Day 11:** server runs with a stub `search_notes` (use Claude Code to scaffold it).
+- **Day 12:** `search_notes` reads real `.md` files from your vault.
+- **Day 13:** add `create_note` and `append_to_note`.
+- **Day 14:** drive a flow — Claude reads notes, n8n processes, result is written back as a note.
+- **Day 15:** error handling, README, tag `v0.1`, 90-sec demo.
+
+## Proof of skill
+A running MCP server whose tools Claude can call to read and modify your Obsidian vault. Link the repo + demo in the tracker.
+
+</script>
+<script type="text/plain" class="exsrc" data-id="12">
+# Day 12 — Read your vault
+
+Goal: make `search_notes` return *real* notes from your Obsidian vault instead of a stub. The connector starts doing actual work.
+
+Builds on `exercises/mcp-server-starter/server.py`.
+
+## Point the server at your vault
+1. Find the full path to your FDE vault folder (the one with your `.md` notes).
+2. Set it and run the server:
+```bash
+cd exercises/mcp-server-starter
+pip install "mcp[cli]" --break-system-packages
+export VAULT_PATH="/full/path/to/your/FDE/vault"
+python3 server.py
+```
+
+## Confirm it reads real files
+3. `search_notes` already walks `*.md` and returns `{file, snippet}` matches. Make sure you have a few notes in the vault with searchable words (your Build Log counts).
+4. (If Day 11 still had a stub) replace it with the real implementation in the starter.
+
+## Test through Claude
+5. With the server connected to Claude Desktop/Code, ask: "Search my notes for *build log*" (or any word you know is in a note).
+6. Confirm Claude returns the actual snippet from your vault.
+
+## Commit
+```bash
+git add . && git commit -m "Day 12: search_notes reads the real vault"
+```
+
+## ✅ Proof
+The MCP tool returns real notes from your vault (screenshot the Claude call + result).
+
+## Why it feeds the work
+This is the centerpiece moving from demo to real (BP + JOB). Note the moment it first returned your own note.
+
+</script>
+<script type="text/plain" class="exsrc" data-id="13">
+# Day 13 — Write to your vault
+
+Goal: let the connector *do work*, not just read. Add `create_note` and `append_to_note` so Claude can write into your knowledge base.
+
+Builds on `exercises/mcp-server-starter/server.py`.
+
+## Implement the write tools
+1. `create_note(title, content)` is already in the starter — confirm it writes `<title>.md` into the vault.
+2. **Implement `append_to_note(title, content)`** (currently commented out): open the note if it exists, append the content (with a newline), create it if missing. Return the path.
+3. Restart the server so Claude picks up the new tool.
+
+## Test through Claude
+4. Ask Claude: "Create a note called *MCP Test* with today's date and three bullets."
+5. Ask: "Append a line to *Build Log* saying my connector can now write."
+6. Open Obsidian and confirm both notes changed on disk.
+
+## Safety check
+7. Add a guard so a title can't escape the vault folder (reject `/` or `..` in the title). One line, but it's the kind of thing that separates a toy from a tool.
+
+## Commit
+```bash
+git add . && git commit -m "Day 13: create_note + append_to_note"
+```
+
+## ✅ Proof
+Connector can read *and* write your knowledge base (show before/after in Obsidian).
+
+## Why it feeds the work
+"Read and write" is the story that makes this a real connector, not a search box (BP + JOB).
+
+</script>
+<script type="text/plain" class="exsrc" data-id="14">
+# Day 14 — Connect the pieces
+
+Goal: one flow that spans all three builds — Claude reads your notes via the MCP server, the n8n workflow processes something, and the result lands back in Obsidian as a new note. Multi-tool, multi-step value.
+
+## Design the flow (pick one concrete example)
+Example: "Summarize this week's build-log notes into a status update."
+1. **Read** — Claude uses `search_notes` to pull your build-log entries from the vault.
+2. **Process** — hand that text to your n8n workflow (the Day 9 flagship, or a trimmed version): it calls Claude to draft a structured summary/status.
+3. **Write back** — the result returns to Obsidian as a new note via `create_note` (directly through the MCP server, or have n8n write the file / call the server).
+
+## Wire it
+4. Decide the handoff: simplest is Claude (with MCP) → you paste/trigger n8n → n8n writes the note. Cleaner is n8n calling the pieces in sequence. Either is a valid Day 14.
+5. Run it end to end. Fix the seams where data shape doesn't match between steps.
+
+## Record it
+6. Screen-record the full run: notes in → processed → new note appears in Obsidian.
+
+## Commit
+```bash
+git add . && git commit -m "Day 14: end-to-end n8n + MCP + Obsidian flow"
+```
+
+## ✅ Proof
+A recorded end-to-end run across n8n + MCP + Obsidian.
+
+## Why it feeds the work
+This is *the story* — orchestration across tools you built (BP + JOB + EXPLORE). It's your strongest interview demo.
+
+</script>
+<script type="text/plain" class="exsrc" data-id="15">
+# Day 15 — Harden + README *(last day before vacation)*
+
+Goal: leave both flagship builds clean so two weeks off costs you nothing. When you come back, everything still runs and tells its own story.
+
+## Harden
+1. **n8n workflow:** add error handling on the AI/HTTP nodes (what happens on a bad response or timeout?). Confirm a failed run doesn't corrupt the output.
+2. **MCP server:** confirm the read/write tools handle a missing file, an empty vault, and a bad title gracefully (you started this Day 13).
+
+## Write real READMEs (problem → solution → how to run)
+3. For the **n8n workflow**: what problem it solves, what it replaces, how to import and run it.
+4. For the **MCP server**: what it does, env vars (`VAULT_PATH`), how to run and connect to Claude, the tools it exposes.
+
+## Tag + record
+5. Commit everything, then tag a release:
+```bash
+git add . && git commit -m "Day 15: harden + READMEs"
+git tag v0.1 && git push origin main --tags
+```
+6. Record a **90-second demo** for each build (problem → it running → result).
+
+## ✅ Proof
+Tagged `v0.1` release + READMEs + two demo videos.
+
+## Why it feeds the work
+These are your two portfolio centerpieces (JOB + BP). Clean now = a Week 4 of polish, not repair.
+
+> 🌴 Then go on vacation Jul 13–24. The hard build is behind you. If a product idea surfaces, drop it in the vault and let it go.
+
+</script>
+<script type="text/plain" class="exsrc" data-id="16">
+# Day 16 — Re-orient + bug bash
+
+Goal: after two weeks off, confirm both flagships still run and fix whatever drifted. Low-stakes re-entry day.
+
+## Re-run both builds
+1. Start n8n (`npx n8n`), import/open the flagship workflow, run it end to end.
+2. Start the MCP server (`export VAULT_PATH=...; python3 server.py`), connect to Claude, call read and write tools.
+
+## Fix the rough edges
+3. Note anything that broke or felt clunky (expired key? changed path? a node that errored?). Fix them.
+4. If behavior changed, re-record the affected demo so your proofs match reality.
+
+## Reset your head
+5. Re-read your `Build Log` and the Day 15 READMEs so you're back in context for the Week 4 case studies.
+
+## Commit
+```bash
+git add . && git commit -m "Day 16: post-vacation bug bash"
+```
+
+## ✅ Proof
+Both builds confirmed working (note the fixes you made).
+
+## Why it feeds the work
+Confidence that the demos are live before you start writing them up (JOB).
+
+</script>
+<script type="text/plain" class="exsrc" data-id="17">
+# Day 17 — Write the deployment-story case study
+
+Goal: turn the flagship n8n workflow into a narrative a hiring manager or prospect can read in two minutes. The build is done — now make it *legible*.
+
+Use `templates/case-study-template.md`.
+
+## Draft it
+1. Copy the template to `case-study-n8n.md`.
+2. **Problem** — the real ops pain this addresses (intake chaos, manual plan-drafting, slow handoffs). Use your marketing-ops background to make it concrete.
+3. **What you built** — the intake → Claude → logged → notify flow, in plain language. One diagram or screenshot helps.
+4. **What it replaces** — the manual process and roughly how long it took.
+5. **How it'd deploy in a real team** — where it slots in, what it'd connect to (their CRM/Sheets/Slack instead of the demo ones).
+
+## Keep it honest
+6. Every claim must map to something you actually built or can show. No invented metrics yet (that's tomorrow).
+
+## ✅ Proof
+A one-page case study of the n8n flagship.
+
+## Why it feeds the work
+This is a BP asset (directly), a JOB interview story, and an EXPLORE sales piece. Pull résumé bullets from it into `03-skills-to-narrative`.
+
+</script>
+<script type="text/plain" class="exsrc" data-id="18">
+# Day 18 — Quantify the impact
+
+Goal: put numbers on the case study — your signature move. "$10M eliminated, 400% efficiency" is your brand; apply that rigor here.
+
+Adds an **Impact** section to `case-study-n8n.md`.
+
+## Build the estimate
+1. **Time per use:** how long the manual version takes (intake → drafting a plan → logging → notifying) vs. the workflow. Be conservative and state your assumptions.
+2. **Error/consistency:** what the automation makes reliable that humans get wrong or skip.
+3. **At scale:** model it at volume — e.g. 1,000+ requests/year. Hours saved = (manual minutes − automated minutes) × volume.
+4. Translate hours → cost using a defensible loaded rate (state it).
+
+## Keep it defensible
+5. Every number gets an assumption next to it. "If X requests at Y minutes saved each…" — a skeptic should be able to follow the math. Defensible beats impressive.
+6. Add a one-line **range** (conservative → optimistic) rather than a single hero number.
+
+## ✅ Proof
+An Impact section with defensible numbers in the n8n case study.
+
+## Why it feeds the work
+This is where the case study becomes "$X / Y% saved" résumé bullets (JOB) and the core of your BP pitch. Mirror your real-career credibility.
+
+</script>
+<script type="text/plain" class="exsrc" data-id="19">
+# Day 19 — Second case study: the MCP server
+
+Goal: show range beyond automation. Write up the Obsidian MCP server as "an AI-accessible second brain" — a connector, a different class of build from the n8n flow.
+
+Use `templates/case-study-template.md` again.
+
+## Draft it
+1. Copy to `case-study-mcp.md`.
+2. **What it does** — read/write access to a knowledge base over MCP; Claude can search notes and create/append them.
+3. **Who'd want it** — anyone with a knowledge base (a team wiki, a research vault, internal docs) who wants Claude to use it safely.
+4. **How to run it** — env var, start command, connect to Claude. Link the README.
+5. **Why it matters** — MCP is the emerging standard for connecting AI to systems; you've built one, not just read about it.
+
+## Clean the README
+6. Make sure the server's README is genuinely runnable by a stranger (problem → solution → exact run steps).
+
+## ✅ Proof
+MCP server case study + a clean, runnable README.
+
+## Why it feeds the work
+Breadth: automation *and* connectors (JOB). Reinforces the BP offering and is an EXPLORE asset for productizing later.
+
+</script>
+<script type="text/plain" class="exsrc" data-id="20">
+# Day 20 — Package reusable templates
+
+Goal: turn the work into IP you own and can reuse across clients/roles. Assets, not just demos.
+
+## Export the n8n workflow
+1. In n8n, export the flagship workflow as **JSON** (Download / Copy to clipboard).
+2. Save it to the repo as `templates/n8n-ops-workflow.json` with a short note on what to swap (API key, Sheet ID, webhook URL) to redeploy.
+
+## Document your existing Skills as portfolio pieces
+3. You already have a **LinkedIn** skill and an **AJO** skill — write a short one-pager each: what it does, who it's for, how it's used. These are reusable assets, treat them like products.
+
+## Bundle it
+4. Make a `templates/` index in your repo README listing the workflow JSON, the two Skills, and the case studies — your reusable toolkit.
+
+## Commit
+```bash
+git add . && git commit -m "Day 20: exported workflow + documented Skills as IP"
+```
+
+## ✅ Proof
+Exported workflow JSON + documented Skills.
+
+## Why it feeds the work
+Productized IP you can reuse (EXPLORE) and point to in interviews (JOB) and your practice (BP).
+
+</script>
+<script type="text/plain" class="exsrc" data-id="21">
+# Day 21 — Build the portfolio page *with Claude Design*
+
+Goal: one polished place to point anyone — a hiring manager, a prospect, a LinkedIn connection. Built with Claude Design.
+
+## Gather what it links to
+1. List your assets: n8n workflow (+ demo + case study), MCP server (+ demo + case study), the two Skills, your GitHub repo.
+2. Have the URLs/files ready before you design.
+
+## Design + build
+3. In **Claude Design**, describe the page: "A clean one-page portfolio/landing page for a forward-deployed AI builder. Hero with a one-line positioning statement, a section per build (problem → what it does → demo link), a Skills section, and a contact/LinkedIn link." Iterate on layout and copy.
+4. Keep positioning **practitioner-led and stealth** — "I build AI automations and connectors," not "looking for work."
+
+## Publish
+5. Export and publish via **GitHub Pages** (push the static files to a repo, enable Pages) or similar. Confirm the live URL loads on mobile too.
+
+## ✅ Proof
+A live portfolio URL. Log it in the tracker.
+
+## Why it feeds the work
+The single link behind every conversation (JOB + EXPLORE). This is your front door.
+
+</script>
+<script type="text/plain" class="exsrc" data-id="22">
+# Day 22 — Build-log post #1
+
+Goal: public proof under your AI pillar — practitioner framing, not "job hunting." Post the flagship n8n workflow deployment story.
+
+Use `templates/build-log-post-template.md`.
+
+## Draft it
+1. Copy the template. Pull from your Day 17–18 case study — you've already done the thinking.
+2. Structure: the problem → what you built → what it replaces → the impact number → one thing you learned.
+3. Add the demo clip or a screenshot. Link the portfolio page.
+
+## Keep the framing right
+4. Voice = builder sharing work, not candidate asking. "Built an ops automation that drafts project plans from a brief — here's how it'd deploy" beats anything that reads as availability.
+5. Every claim ties to a proof (link it). No unverifiable flex.
+
+## Post
+6. Publish to your channel (LinkedIn under your AI pillar — the LinkedIn skill can help shape it).
+
+## ✅ Proof
+A published post. Log the URL.
+
+## Why it feeds the work
+Visibility (JOB) and inbound interest for your practice (EXPLORE). Start of the public track record.
+
+</script>
+<script type="text/plain" class="exsrc" data-id="23">
+# Day 23 — Post #2 + talking points
+
+Goal: a second public post and a reusable talking-points sheet you can pull from in any interview or pitch.
+
+## Post #2 — a "lesson learned"
+1. Use `templates/build-log-post-template.md`. Topic: building the MCP server (e.g. "what I learned building an AI connector to my own knowledge base").
+2. Make it teach something — the MCP concept, the read-vs-write distinction, a gotcha you hit. Teaching reads as expertise.
+3. Link the portfolio + repo. Publish.
+
+## Talking-points sheet
+4. Create `talking-points.md`. Draft **5 points**, each mapping a build → a business outcome:
+   - Build (what you made) → Outcome (hours saved / reliability / capability unlocked) → one line you'd say out loud.
+5. Keep them tight enough to say from memory. These answer "tell me about something you built."
+
+## ✅ Proof
+Published post + talking-points doc.
+
+## Why it feeds the work
+Interview-ready language (JOB) and the spine of your BP pitch. Feed these into `03-skills-to-narrative`.
+
+</script>
+<script type="text/plain" class="exsrc" data-id="24">
+# Day 24 — Outreach
+
+Goal: start the conversations. You have a portfolio, two posts, and talking points — now use them.
+
+## Pick your targets
+1. Identify **3–5** people to connect with: applied-AI / automation / cross-functional leaders whose work overlaps yours.
+2. And/or line up **2–3 exploration chats** about your own practice (potential clients/partners).
+
+## Reach out (stealth, practitioner-led)
+3. Use the **LinkedIn skill** to draft connection notes. Lead with the work, not the ask: reference something specific about them + a relevant build of yours. Never "I'm job hunting."
+4. For exploration chats: "I've been building AI automations/connectors — would love to compare notes on where this is useful." Curiosity, not a pitch.
+5. Send them. Link your portfolio where it fits naturally.
+
+## Log it
+6. Record each request/chat (who, date, angle) — track responses so you can follow up.
+
+## ✅ Proof
+Sent requests/chats, logged. Add to the tracker.
+
+## Why it feeds the work
+Pipeline for both paths (JOB + EXPLORE). The builds were the hard part; this is where they pay off.
+
+</script>
+<script type="text/plain" class="exsrc" data-id="25">
+# Day 25 — Review + next 30 days
+
+Goal: consolidate the sprint and choose your next build. Close the loop and set the next target.
+
+## Consolidate
+1. Export your `tracker.html` proofs (or save a snapshot) — 25 days, 25 proofs.
+2. Confirm the portfolio links everything: repo, two flagships, two case studies, Skills, posts.
+
+## Write a short retro
+3. In Obsidian, one note: what you can do now that you couldn't on Jun 19; the two builds you're proudest of; what was harder/easier than expected; what you'd tell someone starting this sprint.
+
+## Pick the next 30-day target (choose one)
+4. Options:
+   - **Deeper n8n agents** — multi-step, tool-using agent workflows.
+   - **A published Obsidian community plugin** — ship the MCP work as something others install.
+   - **A productized n8n template you sell** — package the flagship as a paid asset.
+5. Write a one-paragraph plan for the chosen target: outcome, first three steps, what "done" looks like.
+
+## ✅ Proof
+Retro note + tracker export + a one-paragraph next-30-days plan.
+
+## Why it feeds the work
+Closes the sprint with evidence (BP + JOB) and points momentum at the next build (EXPLORE). Update your memory/profile with where you landed.
+
+</script>
+</body>
+</html>
