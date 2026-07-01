@@ -10,6 +10,8 @@ Your complete forward-deployed sprint, ready to run and ready to move into a new
 | `01-roadmap.md` | The strategy: target role, your edge, phases, and the drop-in **business-plan section** |
 | `02-daily-plan.md` | The **25-day daily plan** — one objective, exercise, and proof per day |
 | `03-skills-to-narrative.md` | Converts each proof into **business-plan content, résumé bullets, interview stories** |
+| `04-target-role-crowdstrike.md` | First validated target posting (CrowdStrike Director, AI Ops & Marketing Transformation) — JD facts, gap-vs-requirement table, next actions |
+| `05-anthropic-academy-tracker.md` | Checklist of free Anthropic Academy courses to close the "Claude Code-level proficiency" gap named in the JD |
 | `tracker.html` | The **live tracker** — open in a browser; logs progress + proofs; exports a markdown log |
 | `exercises/` | Starter files: setup checklist, first API call, n8n quickstart + ops workflow, Obsidian MCP server starter |
 | `templates/` | Proof log, case-study, and build-log-post templates |

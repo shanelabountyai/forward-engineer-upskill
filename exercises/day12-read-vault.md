@@ -9,10 +9,11 @@ Builds on `exercises/mcp-server-starter/server.py`.
 2. Set it and run the server:
 ```bash
 cd exercises/mcp-server-starter
-pip3 install "mcp[cli]" --break-system-packages
+python3 -m pip install "mcp[cli]" --break-system-packages
 export VAULT_PATH="/full/path/to/your/FDE/vault"
 python3 server.py
 ```
+(If `pip3` errors with "command not found," `python3 -m pip install ...` is the more reliable form.)
 
 ## Confirm it reads real files
 3. `search_notes` already walks `*.md` and returns `{file, snippet}` matches. Make sure you have a few notes in the vault with searchable words (your Build Log counts).

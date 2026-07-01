@@ -61,6 +61,16 @@
   button.primary:hover{filter:brightness(1.08); color:#1a1206}
   button:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
 
+  .tabs{display:flex; gap:22px; margin-bottom:24px; border-bottom:1px solid var(--border)}
+  .tab-btn{
+    font-family:var(--display); font-size:14px; font-weight:500;
+    background:transparent; color:var(--muted); border:none; border-bottom:2px solid transparent;
+    padding:10px 2px; margin-bottom:-1px; cursor:pointer; transition:color .15s ease, border-color .15s ease;
+  }
+  .tab-btn:hover{color:var(--text)}
+  .tab-btn.active{color:var(--accent); border-bottom-color:var(--accent)}
+  .tab-btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
   .phase-head{
     font-family:var(--mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase;
     color:var(--muted); margin:30px 0 12px; padding-bottom:8px; border-bottom:1px solid var(--border);
@@ -98,12 +108,15 @@
   .feed.JOB{color:var(--p2); border-color:#2a3a55}
   .feed.EXPLORE{color:var(--accent); border-color:#4a3820}
   .fields{display:grid; gap:8px}
-  .fields input, .fields textarea{
+  .fields input, .fields textarea, .fields select{
     width:100%; font-family:var(--mono); font-size:12.5px; background:var(--ink);
     color:var(--text); border:1px solid var(--border); border-radius:8px; padding:8px 10px; resize:vertical;
   }
+  .fields select{appearance:auto; cursor:pointer}
   .fields input::placeholder, .fields textarea::placeholder{color:#566080}
-  .fields input:focus, .fields textarea:focus{outline:none; border-color:var(--accent)}
+  .fields input:focus, .fields textarea:focus, .fields select:focus{outline:none; border-color:var(--accent)}
+  .course-link{color:inherit; text-decoration:none; border-bottom:1px dotted var(--muted)}
+  .course-link:hover{color:var(--accent); border-bottom-color:var(--accent)}
   .vac{background:linear-gradient(180deg,#161B2C,#13182700); border:1px dashed var(--border); text-align:center; color:var(--muted); padding:16px; border-radius:12px; margin:12px 0; font-size:13px}
   footer{margin-top:40px; color:var(--muted); font-size:12px; font-family:var(--mono); text-align:center}
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -129,31 +142,60 @@
     <p class="sub">25 working days · Jun 19 → Aug 7 · log a proof every day. Saved automatically in this browser.</p>
   </header>
 
-  <section class="console" aria-label="progress">
-    <div class="readout">
-      <span class="big" id="dayCount">0 / 25</span>
-      <span class="lbl">days shipped</span>
-      <span class="big" id="pct" style="margin-left:auto">0%</span>
-      <span class="lbl">deployed</span>
-    </div>
-    <div class="rail" id="rail" aria-hidden="true"></div>
-    <div class="legend">
-      <span><i class="dot" style="background:var(--p0)"></i>Setup</span>
-      <span><i class="dot" style="background:var(--p1)"></i>Phase 1 · API</span>
-      <span><i class="dot" style="background:var(--p2)"></i>Phase 2 · Integrate + MCP</span>
-      <span><i class="dot" style="background:var(--p3)"></i>Phase 3 · Portfolio</span>
-    </div>
-  </section>
-
-  <div class="toolbar">
-    <button class="primary" id="exportMd">Export Markdown log</button>
-    <button id="exportJson">Export JSON</button>
-    <button id="importJson">Import JSON</button>
-    <button id="reset">Reset</button>
-    <input type="file" id="fileInput" accept="application/json" style="display:none" />
+  <div class="tabs" role="tablist">
+    <button class="tab-btn active" data-tab="sprint" role="tab" aria-selected="true">25-Day Sprint</button>
+    <button class="tab-btn" data-tab="academy" role="tab" aria-selected="false">Academy Tracker</button>
   </div>
 
-  <div id="list"></div>
+  <section id="tab-sprint">
+    <section class="console" aria-label="progress">
+      <div class="readout">
+        <span class="big" id="dayCount">0 / 25</span>
+        <span class="lbl">days shipped</span>
+        <span class="big" id="pct" style="margin-left:auto">0%</span>
+        <span class="lbl">deployed</span>
+      </div>
+      <div class="rail" id="rail" aria-hidden="true"></div>
+      <div class="legend">
+        <span><i class="dot" style="background:var(--p0)"></i>Setup</span>
+        <span><i class="dot" style="background:var(--p1)"></i>Phase 1 · API</span>
+        <span><i class="dot" style="background:var(--p2)"></i>Phase 2 · Integrate + MCP</span>
+        <span><i class="dot" style="background:var(--p3)"></i>Phase 3 · Portfolio</span>
+      </div>
+    </section>
+
+    <div class="toolbar">
+      <button class="primary" id="exportMd">Export Markdown log</button>
+      <button id="exportJson">Export JSON</button>
+      <button id="importJson">Import JSON</button>
+      <button id="reset">Reset</button>
+      <input type="file" id="fileInput" accept="application/json" style="display:none" />
+    </div>
+
+    <div id="list"></div>
+  </section>
+
+  <section id="tab-academy" hidden>
+    <section class="console" aria-label="academy progress">
+      <div class="readout">
+        <span class="big" id="acadCount">0 / 5</span>
+        <span class="lbl">priority courses complete</span>
+        <span class="big" id="acadPct" style="margin-left:auto">0%</span>
+        <span class="lbl">of priority track</span>
+      </div>
+      <div class="rail" id="acadRail" aria-hidden="true"></div>
+      <div class="legend">
+        <span><i class="dot" style="background:var(--p1)"></i>Priority track</span>
+        <span><i class="dot" style="background:var(--p2)"></i>Also relevant</span>
+      </div>
+    </section>
+
+    <div class="toolbar">
+      <button class="primary" id="acadExportMd">Export Markdown log</button>
+    </div>
+
+    <div id="acadList"></div>
+  </section>
 
   <footer>Data lives only in this browser (localStorage). Export before switching machines.</footer>
 </div>
@@ -219,6 +261,14 @@ function load(){
       done: true,
       proof: "commit 8b36eeb",
       notes: "Gotchas hit building this: (1) the iCloud-synced Obsidian vault path has a doubled folder — .../Documents/FDE contains another FDE folder, and the actual .md notes live in .../Documents/FDE/FDE, not the top-level path. (2) search_notes matches file *content*, not filenames — a query for 'build log' missed Build Log.md.md because that exact phrase isn't in the note body, even though the title matches. (3) On this machine, claude_desktop_config.json had no mcpServers key at all (just preferences/coworkUserFilesPath) — added it by hand rather than relying on a UI, then the app itself reformatted/reordered the file on restart, confirming it actually read the new config."
+    });
+  }
+  // Day 13 shipped — seed done + gotcha notes once, without clobbering anything you've already entered.
+  if (!s[13] || (!s[13].done && !s[13].proof && !s[13].notes)) {
+    s[13] = Object.assign({done:false, proof:"", notes:""}, s[13]||{}, {
+      done: true,
+      proof: "append_to_note verified live in Claude Desktop against Build Log.md.md",
+      notes: "Gotchas hit building this: (1) after editing server.py and re-running `python3 server.py` by hand in a terminal, nothing actually updates for Claude — stdio MCP servers only work when the client spawns the process itself and owns its stdin/stdout, so a manually-run copy just hangs waiting on input (expected, not broken) and isn't the instance Claude talks to. (2) picking up code changes requires fully quitting Claude Desktop (Cmd+Q) and reopening it — closing the window doesn't respawn the configured mcpServers subprocess. (3) testing has to happen in a normal Claude Desktop chat, not a Cowork session — Cowork uses its own separately pre-wired Obsidian connector, unrelated to this hand-rolled server.py, so testing there would silently prove nothing. append_to_note itself: reads the existing note if present, ensures a trailing newline before appending so new content doesn't glue onto the last line, and falls back to create-if-missing — confirmed working end to end."
     });
   }
   return s;
@@ -354,9 +404,124 @@ function download(name, text){
   URL.revokeObjectURL(a.href);
 }
 
+/* ---------- Academy Tracker (second tab) ---------- */
+const ACAD_STORE_KEY = "fde_academy_v1";
+
+// group 1 = priority track (closes the "Claude Code-level proficiency" JD gap), group 2 = also relevant.
+const COURSES = [
+  {id:"cc101",      group:1, title:"Claude Code 101", url:"https://anthropic.skilljar.com/claude-code-101",
+    covers:"Explore → Plan → Code → Commit workflow, agentic-loop basics.", maps:"Baseline Claude Code fluency."},
+  {id:"ccia",       group:1, title:"Claude Code in Action", url:"https://anthropic.skilljar.com/claude-code-in-action",
+    covers:"CLAUDE.md memory files, MCP integration, day-to-day dev workflow.", maps:"Directly overlaps the sprint's Phase 2 (memory, MCP)."},
+  {id:"skills",     group:1, title:"Introduction to Agent Skills", url:"https://anthropic.skilljar.com/introduction-to-agent-skills",
+    covers:"Building, configuring, and distributing reusable Skills.", maps:"You're already shipping Skills (LinkedIn, AJO) — formalizes what you know."},
+  {id:"subagents",  group:1, title:"Introduction to Subagents", url:"https://anthropic.skilljar.com/introduction-to-subagents",
+    covers:"Delegation, context management, specialized sub-agent workflows.", maps:"Human-in-the-loop workflow design — a named JD requirement."},
+  {id:"api",        group:1, title:"Building with the Claude API", url:"https://anthropic.skilljar.com/claude-with-the-anthropic-api",
+    covers:"Messages, tool use, streaming, token usage, model selection tradeoffs. (~8 hrs, the largest course)", maps:"Covers the JD's 'platform economics' bullet — no build needed, just complete it."},
+  {id:"cowork",     group:2, title:"Introduction to Claude Cowork", url:"https://anthropic.skilljar.com/introduction-to-claude-cowork",
+    covers:"Cowork task loop, plugins & skills, file and research workflows.", maps:"On-ramp for training non-technical marketers — a named JD responsibility."},
+  {id:"mcp",        group:2, title:"Introduction to Model Context Protocol", url:"https://anthropic.skilljar.com/introduction-to-model-context-protocol",
+    covers:"Building MCP servers/clients from scratch in Python.", maps:"Complements the sprint's Phase 2 MCP build."},
+  {id:"platform101",group:2, title:"Claude Platform 101", url:"https://anthropic.skilljar.com/claude-platform-101",
+    covers:"Ground-up intro to the Claude Developer Platform.", maps:"Lighter on-ramp if the API course feels heavy to start."},
+];
+const GROUP_NAMES = {1:"Priority track — closes the JD's “Claude Code-level proficiency” gap", 2:"Also relevant"};
+
+let acadState = acadLoad();
+
+function acadLoad(){
+  let s;
+  try { s = JSON.parse(localStorage.getItem(ACAD_STORE_KEY)) || {}; }
+  catch(e){ s = {}; }
+  return s;
+}
+function acadSave(){ try { localStorage.setItem(ACAD_STORE_KEY, JSON.stringify(acadState)); } catch(e){} }
+function acadSt(id){ return acadState[id] || (acadState[id] = {status:"not-started", certDate:"", notes:""}); }
+
+function acadRender(){
+  const list = document.getElementById("acadList");
+  if (!list) return;
+  list.innerHTML = "";
+  let lastGroup = null;
+  COURSES.forEach(c => {
+    if (c.group !== lastGroup){
+      const h = document.createElement("div");
+      h.className = "phase-head";
+      h.innerHTML = `<span class="tag">›</span> ${GROUP_NAMES[c.group]}`;
+      list.appendChild(h);
+      lastGroup = c.group;
+    }
+    const s = acadSt(c.id);
+    const card = document.createElement("div");
+    card.className = "day" + (s.status === "complete" ? " done" : "");
+    card.dataset.phase = c.group === 1 ? 1 : 2;
+    card.innerHTML = `
+      <div class="day-top">
+        <div class="meta">
+          <div class="title"><a class="course-link" href="${c.url}" target="_blank" rel="noopener">${esc(c.title)}</a></div>
+          <p class="obj">${esc(c.covers)}</p>
+          <p class="ex">Maps to: ${esc(c.maps)}</p>
+          <div class="fields">
+            <select data-id="${c.id}" data-act="acad-status">
+              <option value="not-started" ${s.status==="not-started"?"selected":""}>Not started</option>
+              <option value="in-progress" ${s.status==="in-progress"?"selected":""}>In progress</option>
+              <option value="complete" ${s.status==="complete"?"selected":""}>Complete</option>
+            </select>
+            <input type="text" placeholder="Certificate date (e.g. 2026-07-15)" value="${esc(s.certDate)}" data-id="${c.id}" data-act="acad-cert">
+            <textarea rows="1" placeholder="Notes…" data-id="${c.id}" data-act="acad-notes">${esc(s.notes)}</textarea>
+          </div>
+        </div>
+      </div>`;
+    list.appendChild(card);
+  });
+  acadUpdateProgress();
+}
+
+function acadUpdateProgress(){
+  const priority = COURSES.filter(c => c.group === 1);
+  const done = priority.filter(c => acadSt(c.id).status === "complete").length;
+  const countEl = document.getElementById("acadCount"), pctEl = document.getElementById("acadPct"), railEl = document.getElementById("acadRail");
+  if (countEl) countEl.textContent = `${done} / ${priority.length}`;
+  if (pctEl) pctEl.textContent = Math.round(done/priority.length*100) + "%";
+  if (railEl) railEl.innerHTML = COURSES.map(c => `<div class="seg ${acadSt(c.id).status==='complete'?'done':''}" data-phase="${c.group===1?1:2}" title="${esc(c.title)}"></div>`).join("");
+}
+
+document.getElementById("acadList").addEventListener("input", e => {
+  const id = e.target.dataset.id, act = e.target.dataset.act;
+  if (!id) return;
+  const s = acadSt(id);
+  if (act === "acad-status"){ s.status = e.target.value; acadRender(); }
+  else if (act === "acad-cert"){ s.certDate = e.target.value; }
+  else if (act === "acad-notes"){ s.notes = e.target.value; }
+  acadSave();
+});
+
+document.getElementById("acadExportMd").addEventListener("click", () => {
+  const priority = COURSES.filter(c => c.group === 1);
+  const done = priority.filter(c => acadSt(c.id).status === "complete").length;
+  let md = `# Anthropic Academy Tracker — exported ${new Date().toLocaleDateString()}\n\n`;
+  md += `Priority track: ${done}/${priority.length} complete.\n\n`;
+  md += `| Course | Group | Status | Cert date | Notes |\n|---|---|---|---|---|\n`;
+  COURSES.forEach(c => { const s = acadSt(c.id);
+    md += `| [${c.title}](${c.url}) | ${c.group===1?"priority":"other"} | ${s.status} | ${s.certDate||""} | ${(s.notes||"").replace(/\n/g," ")} |\n`;
+  });
+  download("anthropic-academy-log.md", md);
+});
+
+/* ---------- Tab switching ---------- */
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab-btn").forEach(b => { b.classList.remove("active"); b.setAttribute("aria-selected","false"); });
+    btn.classList.add("active"); btn.setAttribute("aria-selected","true");
+    document.getElementById("tab-sprint").hidden = btn.dataset.tab !== "sprint";
+    document.getElementById("tab-academy").hidden = btn.dataset.tab !== "academy";
+  });
+});
+
 function buildExsrc(){ document.querySelectorAll('script.exsrc').forEach(s => { EXSRC[s.dataset.id] = s.textContent.split('<\\/script>').join('<\/script>').replace(/^\n/,'').replace(/\n$/,''); }); }
-if (document.readyState === "loading"){ document.addEventListener("DOMContentLoaded", () => { buildExsrc(); render(); }); }
-else { buildExsrc(); render(); }
+if (document.readyState === "loading"){ document.addEventListener("DOMContentLoaded", () => { buildExsrc(); render(); acadRender(); }); }
+else { buildExsrc(); render(); acadRender(); }
 </script>
 <!--EXERCISE-EMBEDS-->
 <script type="text/plain" class="exsrc" data-id="1">

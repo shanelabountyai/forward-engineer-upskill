@@ -7,10 +7,12 @@ A standard way to expose **tools** to an AI client like Claude/Claude Code, so t
 
 ## Setup
 ```bash
-pip3 install "mcp[cli]" --break-system-packages
+python3 -m pip install "mcp[cli]" --break-system-packages
 export VAULT_PATH="/full/path/to/your/FDE/vault"
 python3 server.py
 ```
+> If `pip3` isn't found (or you get `command not found`), `python3 -m pip install ...` is the more reliable form — it always installs into the same interpreter you run the server with. Shells are also case-sensitive, so double-check for typos like `Pip`.
+
 The starter reads `.md` files directly from the vault folder — the simplest, most reliable approach (no Obsidian plugin required). If you later want live two-way sync while Obsidian is open, the **Local REST API** community plugin is an option.
 
 ## Connect it to Claude

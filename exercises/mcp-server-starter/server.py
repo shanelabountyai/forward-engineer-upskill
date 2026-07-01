@@ -9,9 +9,11 @@ Day 12: search_notes reads the real vault.
 Day 13: add create_note / append_to_note (stubs below — implement them).
 
 Run:
-    pip3 install "mcp[cli]" --break-system-packages
+    python3 -m pip install "mcp[cli]" --break-system-packages
     export VAULT_PATH="/full/path/to/your/FDE/vault"
     python3 server.py
+
+(If pip3 isn't found, `python3 -m pip install ...` is the safer form.)
 """
 
 import os
@@ -25,6 +27,13 @@ def _vault() -> Path:
     if not p:
         raise RuntimeError("Set VAULT_PATH to your Obsidian vault folder.")
     return Path(p).expanduser()
+
+def _note_path(title: str) -> Path:
+    """Resolve a note title to a path inside the vault, rejecting anything
+    that could escape it (path separators or '..')."""
+    if "/" in title or "\\" in title or ".." in title:
+        raise ValueError("title can't contain '/', '\\\\', or '..'")
+    return _vault() / f"{title}.md"
 
 @mcp.tool()
 def search_notes(query: str, limit: int = 5) -> list[dict]:
@@ -49,14 +58,22 @@ def search_notes(query: str, limit: int = 5) -> list[dict]:
 @mcp.tool()
 def create_note(title: str, content: str) -> dict:
     """Create a new note in the vault. Returns the path created."""
-    path = _vault() / f"{title}.md"
+    path = _note_path(title)
     path.write_text(content, encoding="utf-8")
     return {"created": str(path)}
 
-# @mcp.tool()
-# def append_to_note(title: str, content: str) -> dict:
-#     """Append content to an existing note (create if missing)."""
-#     ...
+@mcp.tool()
+def append_to_note(title: str, content: str) -> dict:
+    """Append content to an existing note (create if missing). Returns the path."""
+    path = _note_path(title)
+    if path.exists():
+        existing = path.read_text(encoding="utf-8")
+        if existing and not existing.endswith("\n"):
+            existing += "\n"
+        path.write_text(existing + content, encoding="utf-8")
+    else:
+        path.write_text(content, encoding="utf-8")
+    return {"path": str(path)}
 
 if __name__ == "__main__":
     mcp.run()

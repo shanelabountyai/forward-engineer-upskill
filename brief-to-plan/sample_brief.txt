@@ -1,0 +1,15 @@
+Product Launch Campaign: CloudSync Pro
+
+We're launching CloudSync Pro, a new cloud storage product aimed at small businesses,
+on September 15th. We need a full marketing campaign including:
+
+- A landing page with signup form
+- Three blog posts (product announcement, feature deep-dive, customer testimonials)
+- Social media campaign across LinkedIn, Twitter, and Facebook
+- An email drip sequence for our existing mailing list (3 emails)
+- A press release for tech media outlets
+- Paid search ads on Google
+
+Budget: $25,000
+Target audience: Small business owners and IT managers at companies with 10-50 employees
+Key message: "Enterprise-grade cloud storage at small business prices"

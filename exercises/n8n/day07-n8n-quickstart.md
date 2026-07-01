@@ -14,7 +14,7 @@ npx n8n        # editor at http://localhost:5678
    - URL: `https://hacker-news.firebaseio.com/v0/topstories.json`
      (a free public API — returns top story IDs)
 3. Run it. You'll see an array of IDs in the output.
-4. **Set** (or **Edit Fields**) node → keep just the first 5 IDs, rename to `topIds`.
+4. **Limit** node → set the limit to `5`. This keeps the first 5 items (each ID is its own n8n item from the HTTP Request).
 5. Run the whole workflow with the Manual Trigger.
 
 ## What you just learned
