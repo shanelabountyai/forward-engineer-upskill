@@ -15,7 +15,7 @@ One entry per exercise. This is your evidence trail — every business-plan clai
 | 9 | Flagship n8n workflow (end to end) | video … | BP, JOB, EXPLORE | ☐ |
 | 10 | Ran an MCP server | notes + screenshot … | JOB | ☐ |
 | 11 | Scaffolded Obsidian MCP server | commit … | JOB, BP | ☐ |
-| 12 | MCP reads the vault | commit … | BP, JOB | ☐ |
+| 12 | MCP reads the vault | commit 8b36eeb | BP, JOB | ☑ |
 | 13 | MCP writes to the vault | commit … | BP, JOB | ☐ |
 | 14 | n8n + MCP + Obsidian flow | video … | BP, JOB, EXPLORE | ☐ |
 | 15 | Builds v0.1 + READMEs + demos | releases + videos … | JOB, BP | ☐ |

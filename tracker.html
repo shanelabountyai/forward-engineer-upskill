@@ -171,7 +171,7 @@ const DAYS = [
   {id:6,  date:"Fri Jun 26", phase:1, title:"Document Week 1 in Obsidian", obj:"Make the week legible; start your build log.", ex:"READMEs, an Obsidian Build Log note, a 60-sec demo.", feeds:["JOB"], file:"exercises/day06-document-week1.md"},
   {id:7,  date:"Mon Jun 29", phase:2, title:"First n8n workflow", obj:"Learn nodes, connections, executions.", ex:"Manual Trigger to HTTP Request (public API) to Set to output.", feeds:["JOB","EXPLORE"], file:"exercises/n8n/day07-n8n-quickstart.md"},
   {id:8,  date:"Tue Jun 30", phase:2, title:"n8n + Claude", obj:"Put AI inside an automation.", ex:"HTTP/AI node: text in to Claude to structured output.", feeds:["JOB","BP"], file:"exercises/n8n/day08-n8n-claude.md"},
-  {id:9,  date:"Wed Jul 1",  phase:2, title:"Flagship n8n workflow", obj:"A complete ops automation, end to end.", ex:"Intake to Claude plan to write to Sheet/Obsidian to notify.", feeds:["BP","JOB","EXPLORE"], file:"exercises/n8n/day09-n8n-ops-workflow.md"},
+  {id:9,  date:"Wed Jul 1",  phase:2, title:"Flagship n8n workflow", obj:"A complete ops automation, end to end.", ex:"Intake to Claude plan to write to Obsidian to notify.", feeds:["BP","JOB","EXPLORE"], file:"exercises/n8n/day09-n8n-ops-workflow.md"},
   {id:10, date:"Thu Jul 2",  phase:2, title:"Meet MCP", obj:"Understand MCP by running one.", ex:"Clone an example server, connect to Claude, call a tool.", feeds:["JOB"], file:"exercises/day10-meet-mcp.md"},
   {id:11, date:"Mon Jul 6",  phase:2, title:"Scaffold your MCP server", obj:"Stand up your own server (with Claude Code).", ex:"Use mcp-server-starter/; stub tool search_notes.", feeds:["JOB","BP"], file:"exercises/mcp-server-starter/README.md"},
   {id:12, date:"Tue Jul 7",  phase:2, title:"Read your Obsidian vault", obj:"Return real data through MCP.", ex:"Implement search_notes to read .md files from your vault.", feeds:["BP","JOB"], file:"exercises/day12-read-vault.md"},
@@ -196,8 +196,32 @@ const POSTS = {"1": "Day 1 of teaching myself to build AI systems end-to-end —
 let state = load();
 
 function load(){
-  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; }
-  catch(e){ return {}; }
+  let s;
+  try { s = JSON.parse(localStorage.getItem(STORE_KEY)) || {}; }
+  catch(e){ s = {}; }
+  // Day 9 shipped — seed done + gotcha notes once, without clobbering anything you've already entered.
+  if (!s[9] || (!s[9].done && !s[9].proof && !s[9].notes)) {
+    s[9] = Object.assign({done:false, proof:"", notes:""}, s[9]||{}, {
+      done: true,
+      notes: "Gotchas hit building this: (1) Obsidian Local REST API over HTTPS on 127.0.0.1 throws a Node TLS SNI error (IP address not allowed as SNI) — switched to the plugin's plain HTTP server on 127.0.0.1:27123 instead. (2) n8n's Header Auth credential has two separate name fields — the credential's display label vs. the literal header key. The header key must be exactly 'Authorization' or 'x-api-key', nothing else, or you get 'Header name must be a valid HTTP token'. (3) A 401 from Anthropic is almost always a stale/mistyped key — verify with a standalone curl call before touching n8n. (4) $('Webhook') only has data when the whole chain runs from a real triggered webhook call, not when testing a single downstream node in isolation."
+    });
+  }
+  // Day 10 shipped — seed done + change-in-approach notes once, without clobbering anything you've already entered.
+  if (!s[10] || (!s[10].done && !s[10].proof && !s[10].notes)) {
+    s[10] = Object.assign({done:false, proof:"", notes:""}, s[10]||{}, {
+      done: true,
+      notes: "Changed approach from the original plan: instead of cloning an example server off GitHub and hand-editing claude_desktop_config.json, installed the official filesystem MCP server as a Claude Desktop extension (Settings > Extensions) pointed at a scoped folder (Filesystemaccess) — the current documented mechanism, no manual JSON or restart needed. Along the way: (1) the live app config file on this machine has a different schema than older public docs describe (no mcpServers key, just preferences/coworkUserFilesPath/etc.) — a sign the Extensions UI has replaced hand-edited config as the primary path. (2) Anthropic's docs are inconsistent about whether local MCP servers work inside Cowork sessions specifically — an older support article says no, a newer 'Cowork desktop architecture' article (updated same day) says the agent loop runs local MCP servers natively unless an admin disables it — worth re-checking if this matters later. (3) Verified the reference filesystem server's tool-call mechanics independently in a sandbox (listed its 14 tools, called read_text_file, got real file content back) before touching the live app, to separate 'does MCP work' from 'does this app's UI work.'"
+    });
+  }
+  // Day 12 shipped — seed done + gotcha notes once, without clobbering anything you've already entered.
+  if (!s[12] || (!s[12].done && !s[12].proof && !s[12].notes)) {
+    s[12] = Object.assign({done:false, proof:"", notes:""}, s[12]||{}, {
+      done: true,
+      proof: "commit 8b36eeb",
+      notes: "Gotchas hit building this: (1) the iCloud-synced Obsidian vault path has a doubled folder — .../Documents/FDE contains another FDE folder, and the actual .md notes live in .../Documents/FDE/FDE, not the top-level path. (2) search_notes matches file *content*, not filenames — a query for 'build log' missed Build Log.md.md because that exact phrase isn't in the note body, even though the title matches. (3) On this machine, claude_desktop_config.json had no mcpServers key at all (just preferences/coworkUserFilesPath) — added it by hand rather than relying on a UI, then the app itself reformatted/reordered the file on restart, confirming it actually read the new config."
+    });
+  }
+  return s;
 }
 function save(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e){} }
 function st(id){ return state[id] || (state[id] = {done:false, proof:"", notes:""}); }
@@ -632,7 +656,8 @@ Goal: a complete "ops" automation entirely on tools you control. This is your po
 ```
 [Webhook / Form intake]
       → [Anthropic: draft a project plan from the brief]
-      → [Write result to Google Sheet OR Obsidian]
+      → [Code node: parse plan + build Obsidian note]
+      → [HTTP Request: create note in Obsidian (Local REST API)]
       → [Notify: email or Discord/Slack webhook]
 ```
 
@@ -659,15 +684,23 @@ Goal: a complete "ops" automation entirely on tools you control. This is your po
      ```
    *(Tip: n8n also has a native Anthropic / AI Agent node — either works. The HTTP node teaches you the real request.)*
 
-3. **Set / Code** node → parse the model's text into clean fields (the plan lives in `content[0].text`).
+3. **Code** node → parse the model's text (the plan JSON lives in `content[0].text`) and build the Obsidian note content + filename.
+   - Slugify the brief into a safe filename (date + slug), build a markdown note with frontmatter and a task checklist.
 
-4. **Google Sheets** node (free) → append a row with the brief + plan.
-   *Alternative:* write a note to **Obsidian** via your Day 13 MCP `create_note` tool, or via the Local REST API plugin.
+4. **HTTP Request** node → create the note directly in your vault via the **Obsidian Local REST API** community plugin (no Day 13 MCP dependency needed here).
+   - Method: `PUT`
+   - URL: `={{ 'https://127.0.0.1:27124/vault/' + $json.notePath }}`
+   - Authentication: **Header Auth** credential → `Authorization: Bearer <your Local REST API key>`
+   - Headers: `Content-Type: text/markdown`
+   - Body: **Raw/Text** → `={{ $json.noteBody }}`
+   - Enable **"Ignore SSL Issues"** (self-signed cert on port 27124), or use the plugin's non-encrypted HTTP server on port 27123 instead.
+   - `PUT` creates the file if new and overwrites if it exists — since the filename is unique per run, this always creates a fresh note.
+   - **Gotcha:** requires n8n and Obsidian on the same machine (localhost-only API). Moving to n8n Cloud later needs a tunnel (e.g. ngrok).
 
-5. **Send Email** or **HTTP Request to a Discord/Slack incoming webhook** → notify that a plan is ready.
+5. **Send Email** or **HTTP Request to a Discord/Slack incoming webhook** → notify that a plan is ready, e.g. `✅ New project plan created: Plans/{{ $json.filename }}`.
 
 ## ✅ Proof
-A working webhook-to-notification run. Record a 60–90 second screen capture of one execution. Export the workflow JSON (Day 20) — that's reusable IP.
+A working webhook-to-notification run, with a real note landing in your Obsidian vault. Record a 60–90 second screen capture of one execution. Export the workflow JSON (Day 20) — that's reusable IP.
 
 ## Why this matters
 This is the "strategy that ships" story in miniature: a request goes in, AI does the thinking, the result is logged and the team is notified — built on infrastructure you own and can hand to any client.
@@ -678,25 +711,28 @@ This is the "strategy that ships" story in miniature: a request goes in, AI does
 
 Goal: understand the Model Context Protocol by *running one*. You don't need to build yet — today is literacy, so Week 3 (building your own) isn't starting cold.
 
-## Run an example server
-1. Pick an official example from Anthropic's MCP servers repo (e.g. a filesystem or "everything" demo server). Check the docs at https://modelcontextprotocol.io and the `modelcontextprotocol/servers` GitHub repo.
-2. Clone it and follow its README to run it locally (Node or Python depending on the example).
+## Install an example server (Desktop Extensions, not manual config)
+1. Open Claude Desktop → Settings → Extensions.
+2. Install the official **filesystem** MCP server as a desktop extension — one click, no cloning a repo or hand-editing a JSON config file.
+3. Point it at a scoped local folder (not your whole home directory) — e.g. a dedicated `Filesystemaccess` folder.
 
 ## Connect it to Claude
-3. Add the server to **Claude Desktop** (or Claude Code) config so it appears as an available tool. The example's README shows the exact config block — it's a small JSON entry pointing at the server command.
-4. Restart Claude Desktop/Code so it picks up the server.
+4. The extension activates once configured — no separate `claude_desktop_config.json` edit or app restart needed for this path.
 
 ## Call a tool
-5. In a Claude chat, trigger one of the server's tools (e.g. ask it to read a file the filesystem server exposes). Confirm the tool actually runs and returns real data.
+5. In a Claude chat, ask it to list the folder or read a specific file. Confirm it actually calls the tool (look for the tool-call card, not just a text answer) and returns real data. Bonus: ask it to create/write a file in the same folder to see the write side of the server too.
 
 ## Capture what you learned
-6. In your Obsidian vault, jot 3–5 bullets: what a "tool" looks like over MCP, what the config did, and how this maps to the server *you'll* build next week.
+6. In your Obsidian vault, jot 3–5 bullets: what a "tool" looks like over MCP, what the extension install did under the hood, and how this maps to the server *you'll* build next week.
 
 ## ✅ Proof
 Notes + a screenshot of a working MCP tool call.
 
 ## Why it feeds the work
 MCP literacy is rare and in demand (JOB). These notes are your on-ramp to Days 11–15.
+
+## Note on approach (changed 2026-07-01)
+Originally scoped as "clone an official example server from GitHub + hand-edit `claude_desktop_config.json`." Current Claude Desktop instead manages local MCP servers through **Settings → Extensions** (one-click installable packages) — that's now the documented, supported path, so the exercise was updated to match rather than have you hand-edit a config file that isn't the primary mechanism anymore. Used the official **filesystem** server, installed via Extensions, pointed at a scoped folder (`Filesystemaccess`).
 
 </script>
 <script type="text/plain" class="exsrc" data-id="11">
