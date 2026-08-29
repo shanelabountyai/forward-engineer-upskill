@@ -1,2 +1,5 @@
 fde-portfolio/
 **/__pycache__/
+
+# macOS Finder metadata. Tracked twice before this repo went public.
+.DS_Store
